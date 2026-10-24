@@ -1,15 +1,12 @@
 #include "Board.h"
-#include <iostream>
 #include <algorithm>
 #include <random>
 #include <chrono>
-#include <string>
 
 Board::Board(int r, int c) : rows(r), cols(c) {
     initialize();
 }
 
-//Initialize board grid
 void Board::initialize() {
     grid.assign(rows, std::vector<Card>(cols));
     int totalCards = rows * cols;
@@ -19,10 +16,9 @@ void Board::initialize() {
     for (int i = 0; i < numPairs; ++i) {
         char sym = static_cast<char>('A' + i);
         symbols.push_back(sym);
-        symbols.push_back(sym); //Add pair
+        symbols.push_back(sym);
     }
 
-    //Fill grid sequentially with generated symbols
     int index = 0;
     for (int r = 0; r < rows; ++r) {
         for (int c = 0; c < cols; ++c) {
@@ -33,7 +29,6 @@ void Board::initialize() {
     shuffle();
 }
 
-//Randomly shuffle cards on the board
 void Board::shuffle() {
     std::vector<Card> flatBoard;
     for (const auto& row : grid) {
@@ -42,11 +37,9 @@ void Board::shuffle() {
         }
     }
 
-    //Seed random generator with current time
     unsigned seed = static_cast<unsigned>(std::chrono::system_clock::now().time_since_epoch().count());
     std::shuffle(flatBoard.begin(), flatBoard.end(), std::default_random_engine(seed));
 
-    //Repopulate grid with shuffled cards
     int index = 0;
     for (int r = 0; r < rows; ++r) {
         for (int c = 0; c < cols; ++c) {
@@ -55,32 +48,32 @@ void Board::shuffle() {
     }
 }
 
-//Render formatted board to standard output
-void Board::display() const {
-    std::cout << "\n   ";
-    for (int c = 0; c < cols; ++c) {
-        std::cout << c + 1 << " ";
-    }
-    std::cout << "\n  +" << std::string(cols * 2, '-') << "\n";
-
+void Board::setupCardPositions(float startX, float startY, float cardSize, float padding) {
     for (int r = 0; r < rows; ++r) {
-        std::cout << r + 1 << " |";
         for (int c = 0; c < cols; ++c) {
-            std::cout << grid[r][c].getDisplayChar() << " ";
+            float x = startX + c * (cardSize + padding);
+            float y = startY + r * (cardSize + padding);
+            grid[r][c].setSize(cardSize, cardSize);
+            grid[r][c].setPosition(x, y);
         }
-        std::cout << "\n";
     }
-    std::cout << "\n";
 }
 
-bool Board::isValidCoordinate(int r, int c) const {
-    return r >= 0 && r < rows && c >= 0 && c < cols;
+void Board::render(sf::RenderWindow& window, const sf::Font& font) {
+    for (int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+            grid[r][c].render(window, font);
+        }
+    }
 }
 
-Card& Board::getCard(int r, int c) {
-    return grid[r][c];
-}
-
-const Card& Board::getCard(int r, int c) const {
-    return grid[r][c];
+Card* Board::getCardAtPosition(sf::Vector2f mousePos) {
+    for (int r = 0; r < rows; ++r) {
+        for (int c = 0; c < cols; ++c) {
+            if (grid[r][c].contains(mousePos)) {
+                return &grid[r][c];
+            }
+        }
+    }
+    return nullptr;
 }

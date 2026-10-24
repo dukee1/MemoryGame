@@ -1,11 +1,14 @@
-#ifndef PEXESO_CARD_H
-#define PEXESO_CARD_H
+#ifndef MEMORYGAME_CARD_H
+#define MEMORYGAME_CARD_H
+
+#include <SFML/Graphics.hpp>
 
 class Card {
 private:
     char symbol;
     bool revealed;
     bool matched;
+    sf::RectangleShape shape;
 
 public:
     explicit Card(char sym = ' ');
@@ -18,7 +21,10 @@ public:
     void hide();
     void setMatched(bool state);
 
-    char getDisplayChar() const;
+    void setPosition(float x, float y);
+    void setSize(float width, float height);
+    bool contains(sf::Vector2f point) const;
+    void render(sf::RenderWindow& window, const sf::Font& font) const;
 };
 
-#endif //PEXESO_CARD_H
+#endif //MEMORYGAME_CARD_H

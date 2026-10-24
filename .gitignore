@@ -1,6 +1,7 @@
-cmake-build-debug/
+cmake-build-*/
 build/
 .idea/
+.DS_Store
 *.exe
 *.obj
 *.o
