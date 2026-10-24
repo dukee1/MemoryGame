@@ -49,11 +49,17 @@ MemoryGame/
 │   ├── Board.h
 │   ├── Card.h
 │   └── Game.h
+├── screenshots/
+│   ├── match.jpg
+│   ├── start.jpg
+│   └── win.jpg
 ├── src/
 │   ├── Board.cpp
 │   ├── Card.cpp
 │   └── Game.cpp
 ├── CMakeLists.txt
+├── LICENSE
+├── README.md
 └── main.cpp
 ```
 
