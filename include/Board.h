@@ -1,5 +1,5 @@
-#ifndef PEXESO_BOARD_H
-#define PEXESO_BOARD_H
+#ifndef MEMORYGAME_BOARD_H
+#define MEMORYGAME_BOARD_H
 
 #include "Card.h"
 #include <vector>
@@ -15,14 +15,13 @@ public:
 
     void initialize();
     void shuffle();
-    void display() const;
+    void setupCardPositions(float startX, float startY, float cardSize, float padding);
 
-    bool isValidCoordinate(int r, int c) const;
-    Card& getCard(int r, int c);
-    const Card& getCard(int r, int c) const;
+    void render(sf::RenderWindow& window, const sf::Font& font);
+    Card* getCardAtPosition(sf::Vector2f mousePos);
 
     int getRows() const { return rows; }
     int getCols() const { return cols; }
 };
 
-#endif //PEXESO_BOARD_H
+#endif //MEMORYGAME_BOARD_H

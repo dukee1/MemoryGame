@@ -1,23 +1,32 @@
-#ifndef PEXESO_GAME_H
-#define PEXESO_GAME_H
+#ifndef MEMORYGAME_GAME_H
+#define MEMORYGAME_GAME_H
 
 #include "Board.h"
+#include <SFML/Graphics.hpp>
 
 class Game {
 private:
+    sf::RenderWindow window;
+    sf::Font font;
     Board board;
+
+    Card* firstSelected;
+    Card* secondSelected;
+    bool waitingForMismatchHide;
+    sf::Clock mismatchClock;
+
     int turns;
     int pairsFound;
     int totalPairs;
 
-    void clearScreen() const;
-    void pause(int seconds) const;
-    void processTurn();
+    void processEvents();
+    void update();
+    void render();
+    void handleCardClick(Card* clickedCard);
 
 public:
     Game(int rows, int cols);
-
     void run();
 };
 
-#endif //PEXESO_GAME_H
+#endif //MEMORYGAME_GAME_H

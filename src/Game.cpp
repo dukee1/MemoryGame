@@ -1,121 +1,116 @@
 #include "Game.h"
 #include <iostream>
-#include <thread>
-#include <chrono>
-#include <limits>
-#include <cstdlib>
+#include <string>
 
 Game::Game(int rows, int cols)
-    : board(rows, cols), turns(0), pairsFound(0), totalPairs((rows * cols) / 2) {}
+    : window(sf::VideoMode(800, 600), "MemoryGame", sf::Style::Titlebar | sf::Style::Close),
+      board(rows, cols),
+      firstSelected(nullptr),
+      secondSelected(nullptr),
+      waitingForMismatchHide(false),
+      turns(0),
+      pairsFound(0),
+      totalPairs((rows * cols) / 2) {
 
-void Game::clearScreen() const {
-#ifdef _WIN32
-    std::system("cls");
-#else
-    std::system("clear");
-#endif
-}
-
-void Game::pause(int seconds) const {
-    std::this_thread::sleep_for(std::chrono::seconds(seconds));
-}
-
-//Turn input and card matching logic
-void Game::processTurn() {
-    int r1, c1, r2, c2;
-
-    while (true) {
-        board.display();
-        std::cout << "Enter row and column for FIRST card (e.g., 1 2): ";
-        if (!(std::cin >> r1 >> c1)) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Please enter numbers.\n";
-            continue;
-        }
-
-        --r1; --c1;
-
-        if (!board.isValidCoordinate(r1, c1) || board.getCard(r1, c1).isMatched() || board.getCard(r1, c1).isRevealed()) {
-            std::cout << "Invalid card selection. Try again.\n";
-            continue;
-        }
-        break;
+    //Load bundled font first, then fall back to system fonts
+    if (!font.loadFromFile("assets/DejaVuSans.ttf") &&
+        !font.loadFromFile(std::string(ASSETS_DIR) + "/DejaVuSans.ttf") &&
+        !font.loadFromFile("/System/Library/Fonts/Supplemental/Arial.ttf") &&
+        !font.loadFromFile("C:/Windows/Fonts/arial.ttf") &&
+        !font.loadFromFile("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf")) {
+        std::cerr << "Warning: Could not load any font!\n";
     }
 
-    board.getCard(r1, c1).flip();
-    board.display();
-
-    while (true) {
-        std::cout << "Enter row and column for SECOND card: ";
-        if (!(std::cin >> r2 >> c2)) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cout << "Invalid input. Please enter numbers.\n";
-            continue;
-        }
-
-        --r2; --c2;
-
-        if (!board.isValidCoordinate(r2, c2) || (r1 == r2 && c1 == c2) ||
-            board.getCard(r2, c2).isMatched() || board.getCard(r2, c2).isRevealed()) {
-            std::cout << "Invalid card selection. Try again.\n";
-            continue;
-        }
-        break;
-    }
-
-    board.getCard(r2, c2).flip();
-    board.display();
-    turns++;
-
-    //Check if matched
-    if (board.getCard(r1, c1).getSymbol() == board.getCard(r2, c2).getSymbol()) {
-        std::cout << "Match found!\n";
-        board.getCard(r1, c1).setMatched(true);
-        board.getCard(r2, c2).setMatched(true);
-        pairsFound++;
-        pause(1);
-    } else {
-        std::cout << "No match. Hiding cards...\n";
-        pause(2);
-        board.getCard(r1, c1).hide();
-        board.getCard(r2, c2).hide();
-    }
-    clearScreen();
+    //Position cards in window
+    board.setupCardPositions(200.0f, 100.0f, 80.0f, 15.0f);
 }
 
-//Main interactive game loop
+void Game::handleCardClick(Card* clickedCard) {
+    if (!clickedCard || clickedCard->isMatched() || clickedCard->isRevealed() || waitingForMismatchHide) {
+        return;
+    }
+
+    clickedCard->flip();
+
+    if (!firstSelected) {
+        firstSelected = clickedCard;
+    } else if (!secondSelected && clickedCard != firstSelected) {
+        secondSelected = clickedCard;
+        turns++;
+
+        if (firstSelected->getSymbol() == secondSelected->getSymbol()) {
+            firstSelected->setMatched(true);
+            secondSelected->setMatched(true);
+            firstSelected = nullptr;
+            secondSelected = nullptr;
+            pairsFound++;
+        } else {
+            waitingForMismatchHide = true;
+            mismatchClock.restart();
+        }
+    }
+}
+
+void Game::processEvents() {
+    sf::Event event{};
+    while (window.pollEvent(event)) {
+        if (event.type == sf::Event::Closed) {
+            window.close();
+        }
+
+        if (event.type == sf::Event::MouseButtonPressed && event.mouseButton.button == sf::Mouse::Left) {
+            sf::Vector2f mousePos = window.mapPixelToCoords(sf::Mouse::getPosition(window));
+            handleCardClick(board.getCardAtPosition(mousePos));
+        }
+    }
+}
+
+void Game::update() {
+    //If cards didn't match, wait 1 second before flipping back
+    if (waitingForMismatchHide && mismatchClock.getElapsedTime().asSeconds() >= 1.0f) {
+        if (firstSelected && secondSelected) {
+            firstSelected->hide();
+            secondSelected->hide();
+        }
+        firstSelected = nullptr;
+        secondSelected = nullptr;
+        waitingForMismatchHide = false;
+    }
+}
+
+void Game::render() {
+    window.clear(sf::Color(30, 30, 45)); //Dark background
+
+    //Render Board
+    board.render(window, font);
+
+    //Render Turn Counter
+    sf::Text hudText;
+    hudText.setFont(font);
+    hudText.setString("Turns: " + std::to_string(turns));
+    hudText.setCharacterSize(24);
+    hudText.setFillColor(sf::Color::White);
+    hudText.setPosition(20.0f, 20.0f);
+    window.draw(hudText);
+
+    //Render WON Message
+    if (pairsFound == totalPairs) {
+        sf::Text winText;
+        winText.setFont(font);
+        winText.setString("YOU WON IN " + std::to_string(turns) + " TURNS!");
+        winText.setCharacterSize(32);
+        winText.setFillColor(sf::Color::Green);
+        winText.setPosition(220.0f, 520.0f);
+        window.draw(winText);
+    }
+
+    window.display();
+}
+
 void Game::run() {
-    int choice = 0;
-    while (choice != 2) {
-        clearScreen();
-        std::cout << "PEXESO GAME\n";
-        std::cout << "1. Play Game\n";
-        std::cout << "2. Exit\n";
-        std::cout << "Select an option: ";
-
-        if (!(std::cin >> choice)) {
-            std::cin.clear();
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            continue;
-        }
-
-        if (choice == 1) {
-            turns = 0;
-            pairsFound = 0;
-            board.initialize();
-            clearScreen();
-
-            while (pairsFound < totalPairs) {
-                processTurn();
-            }
-
-            clearScreen();
-            std::cout << "Congratulations! You won in " << turns << " turns.\n";
-            std::cout << "Press Enter to return to menu...";
-            std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-            std::cin.get();
-        }
+    while (window.isOpen()) {
+        processEvents();
+        update();
+        render();
     }
 }
